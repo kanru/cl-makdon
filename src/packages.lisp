@@ -31,7 +31,10 @@
 (in-package #:cl-user)
 
 (defpackage #:makdon
-  (:use #:cl))
+  (:use #:cl)
+  (:import-from #:alexandria
+                #:if-let
+                #:curry))
 
 ;;; packages.lisp ends here
 

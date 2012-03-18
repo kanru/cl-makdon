@@ -30,6 +30,113 @@
 
 (in-package #:makdon)
 
+(declaim (optimize debug))
+
+;;; enum library
+
+(defclass enum ()
+  ((items :initarg :items
+          :initform nil          
+          :accessor items)))
+
+(defun make-enum (&optional list)
+  (make-instance 'enum :items list))
+
+(defun enum-push (enum item)
+  (push item (items enum))
+  item)
+
+(defun enum-peek (enum)
+  (car (items enum)))
+
+(defun enum-peek2 (enum)
+  (cadr (items enum)))
+
+(defun enum-junk (enum)
+  (pop (items enum)))
+
+(defun enum-map (fun enum)
+  (make-enum (mapcar fun (items enum))))
+
+(defmethod print-object ((object enum) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (print (items object) stream)))
+
+;;; Line
+
+(defclass line ()
+  ((indent :initarg :indent
+           :initform 0
+           :accessor indent)
+   (text :initarg :text
+         :initform ""
+         :accessor text)
+   (blankp :initarg :blankp
+           :initform t
+           :accessor blankp)))
+
+(defun make-line (&key indent text blankp)
+  (make-instance 'line :indent indent
+                       :text text
+                       :blankp blankp))
+
+(defmethod print-object ((object line) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (format stream "indent: ~a text: ~s blankp: ~a"
+            (indent object)
+            (text object)
+            (blankp object))))
+
+;;; Utility
+
+(defun calc-indent (string)
+  (loop for c across string
+        while (char= c #\Space)
+        count t))
+
+(defun strip (string)
+  (string-trim '(#\Tab #\Space #\Linefeed #\Return) string))
+
+(defun input->enum (input-stream)
+  (make-enum
+   (loop for line = (read-line input-stream nil)
+         while line
+         for indent = (calc-indent line)
+         for text = (strip line)
+         for blankp = (string= "" text)
+         collect (make-line :blankp blankp
+                            :text text
+                            :indent indent))))
+
+(defun all (char string)
+  (and (not (string= string ""))
+       (every (curry #'char= char) string)))
+
+;;; Pass 1
+
+;;; First we have to do Setext-style header to Atx-style header
+;;; transform because the header mark has higher precedence
+
+(defun setext->atx (enum)
+  (let ((line2 (enum-peek2 enum)))
+    (if (and line2
+             (zerop (indent line2))
+             (or (all #\= (text line2))
+                 (all #\- (text line2))))
+        (let ((line (enum-peek enum)))
+          (enum-junk enum)
+          (enum-junk enum)
+          (enum-push enum
+                     (make-line :indent 0
+                                :text (format nil "~:[#~;##~]~a~a"
+                                              (char= #\= (char (text line2) 0))
+                                              (make-string (indent line)
+                                                           :initial-element #\Space)
+                                              (text line))
+                                :blankp nil))
+          (setext->atx enum))
+        enum)))
+
 ;;; makdon.lisp ends here
 
 ;;; Local Variables:

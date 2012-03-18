@@ -6,4 +6,4 @@
   :components ((:module "src"
                 :components ((:file "packages")
                              (:file "makdon" :depends-on ("packages")))))
-  :depends-on ())
+  :depends-on (:alexandria))
