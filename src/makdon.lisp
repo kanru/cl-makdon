@@ -117,25 +117,29 @@
 ;;; First we have to do Setext-style header to Atx-style header
 ;;; transform because the header mark has higher precedence
 
-(defun setext->atx (enum)
-  (let ((line2 (enum-peek2 enum)))
-    (if (and line2
-             (zerop (indent line2))
-             (or (all #\= (text line2))
-                 (all #\- (text line2))))
-        (let ((line (enum-peek enum)))
-          (enum-junk enum)
-          (enum-junk enum)
-          (enum-push enum
-                     (make-line :indent 0
-                                :text (format nil "~:[#~;##~]~a~a"
-                                              (char= #\= (char (text line2) 0))
-                                              (make-string (indent line)
-                                                           :initial-element #\Space)
-                                              (text line))
-                                :blankp nil))
-          (setext->atx enum))
-        enum)))
+(defun setext->atx (enum &optional (acc (make-enum)))
+  (if (enum-peek enum)
+      (let ((line2 (enum-peek2 enum)))
+        (if (and line2
+                 (zerop (indent line2))
+                 (or (all #\= (text line2))
+                     (all #\- (text line2))))
+            (let ((line (enum-peek enum)))
+              (enum-junk enum)
+              (enum-junk enum)
+              (enum-push acc
+                         (make-line :indent 0
+                                    :text (format nil "~:[#~;##~]~a~a"
+                                                  (char= #\= (char (text line2) 0))
+                                                  (make-string (indent line)
+                                                               :initial-element #\Space)
+                                                  (text line))
+                                    :blankp nil))
+              (setext->atx enum acc))
+            (progn
+              (enum-push acc (enum-junk enum))
+              (setext->atx enum acc))))
+      acc))
 
 ;;; makdon.lisp ends here
 
