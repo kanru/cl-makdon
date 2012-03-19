@@ -36,7 +36,7 @@
 
 (defclass enum ()
   ((items :initarg :items
-          :initform nil          
+          :initform nil
           :accessor items)))
 
 (defun make-enum (&optional list)
