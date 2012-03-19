@@ -97,16 +97,15 @@
 (defun strip (string)
   (string-trim '(#\Tab #\Space #\Linefeed #\Return) string))
 
-(defun input->enum (input-stream)
-  (make-enum
-   (loop for line = (read-line input-stream nil)
-         while line
-         for indent = (calc-indent line)
-         for text = (strip line)
-         for blankp = (string= "" text)
-         collect (make-line :blankp blankp
-                            :text text
-                            :indent indent))))
+(defun input->lines (input-stream)
+  (loop for line = (read-line input-stream nil)
+        while line
+        for indent = (calc-indent line)
+        for text = (strip line)
+        for blankp = (string= "" text)
+        collect (make-line :blankp blankp
+                           :text text
+                           :indent indent)))
 
 (defun all (char string)
   (and (not (string= string ""))
@@ -117,29 +116,27 @@
 ;;; First we have to do Setext-style header to Atx-style header
 ;;; transform because the header mark has higher precedence
 
-(defun setext->atx (enum &optional (acc (make-enum)))
-  (if (enum-peek enum)
-      (let ((line2 (enum-peek2 enum)))
+(defun merge-head-line (line1 line2)
+  (make-line :indent 0
+             :text (format nil "~:[#~;##~]~a~a"
+                           (char= #\- (char (text line2) 0))
+                           (make-string (indent line1)
+                                        :initial-element #\Space)
+                           (text line1))
+             :blankp nil))
+
+(defun setext->atx (list &optional acc)
+  (if (car list)
+      (let ((line2 (cadr list)))
         (if (and line2
                  (zerop (indent line2))
                  (or (all #\= (text line2))
                      (all #\- (text line2))))
-            (let ((line (enum-peek enum)))
-              (enum-junk enum)
-              (enum-junk enum)
-              (enum-push acc
-                         (make-line :indent 0
-                                    :text (format nil "~:[#~;##~]~a~a"
-                                                  (char= #\= (char (text line2) 0))
-                                                  (make-string (indent line)
-                                                               :initial-element #\Space)
-                                                  (text line))
-                                    :blankp nil))
-              (setext->atx enum acc))
-            (progn
-              (enum-push acc (enum-junk enum))
-              (setext->atx enum acc))))
-      acc))
+            (let* ((line (car list))
+                   (acc2 (cons (merge-head-line line line2) acc)))
+              (setext->atx (cddr list) acc2))
+            (setext->atx (cdr list) (cons (car list) acc))))
+      (reverse acc)))
 
 ;;; makdon.lisp ends here
 
