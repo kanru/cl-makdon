@@ -126,17 +126,36 @@
              :blankp nil))
 
 (defun setext->atx (list &optional acc)
-  (if (car list)
-      (let ((line2 (cadr list)))
-        (if (and line2
-                 (zerop (indent line2))
-                 (or (all #\= (text line2))
-                     (all #\- (text line2))))
-            (let* ((line (car list))
-                   (acc2 (cons (merge-head-line line line2) acc)))
-              (setext->atx (cddr list) acc2))
-            (setext->atx (cdr list) (cons (car list) acc))))
-      (reverse acc)))
+  (let ((line1 (car list))
+        (line2 (cadr list)))
+    (if (and line2
+             (zerop (indent line2))
+             (or (all #\= (text line2))
+                 (all #\- (text line2))))
+        (let ((acc2 (cons (merge-head-line line1 line2) acc)))
+          (setext->atx (cddr list) acc2))
+        (if line1
+            (setext->atx (cdr list) (cons (car list) acc))
+            (reverse acc)))))
+
+;;; Join two lines if no blank lines in between
+
+(defun join (line1 line2)
+  (make-line :indent (indent line1)
+             :text (format nil "~a ~a" (text line1) (text line2))
+             :blankp nil))
+
+(defun unwrap-lines (list &optional acc)
+  (let ((line1 (car list))
+        (line2 (cadr list)))
+    (if (and line2
+             (not (blankp line1))
+             (not (blankp line2)))
+        (let ((line12 (join line1 line2)))
+          (unwrap-lines (cons line12 (cddr list)) acc))
+        (if line1
+            (unwrap-lines (cdr list) (cons line1 acc))
+            (reverse acc)))))
 
 ;;; makdon.lisp ends here
 
