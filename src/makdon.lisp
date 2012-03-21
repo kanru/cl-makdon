@@ -140,17 +140,33 @@
 
 ;;; Join two lines if no blank lines in between
 
+(defun quote-level (line)
+  (loop for char across (text line)
+        while (member char '(#\Space #\>))
+        count (char= char #\>)))
+
+(defun same-quote-level-p (line1 line2)
+  (= (quote-level line1) (quote-level line2)))
+
+(defun strip-quote (string)
+  (string-left-trim '(#\Space #\>) string))
+
+(defun join-able-p (line1 line2)
+  (and (not (blankp line1))
+       (not (blankp line2))
+       (same-quote-level-p line1 line2)))
+
 (defun join (line1 line2)
   (make-line :indent (indent line1)
-             :text (format nil "~a ~a" (text line1) (text line2))
+             :text (format nil "~a ~a" (text line1)
+                           (strip-quote (text line2)))
              :blankp nil))
 
 (defun unwrap-lines (list &optional acc)
   (let ((line1 (car list))
         (line2 (cadr list)))
     (if (and line2
-             (not (blankp line1))
-             (not (blankp line2)))
+             (join-able-p line1 line2))
         (let ((line12 (join line1 line2)))
           (unwrap-lines (cons line12 (cddr list)) acc))
         (if line1
