@@ -164,7 +164,7 @@
 (defun join-able-p (line1 line2)
   (and (not (blankp line1))
        (not (blankp line2))
-       (same-quote-level-p line1 line2)
+       (not (plusp (quote-level line1)))
        (not (list-start-p line1))))
 
 (defun join (line1 line2)
