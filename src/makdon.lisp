@@ -68,6 +68,9 @@
   ((indent :initarg :indent
            :initform 0
            :accessor indent)
+   (quotes :initarg :quotes
+           :initform 0
+           :accessor quotes)
    (text :initarg :text
          :initform ""
          :accessor text)
@@ -75,35 +78,44 @@
            :initform t
            :accessor blankp)))
 
-(defun make-line (&key indent text blankp)
+(defun make-line (&key indent quotes text blankp)
   (make-instance 'line :indent indent
+                       :quotes quotes
                        :text text
                        :blankp blankp))
 
 (defmethod print-object ((object line) stream)
   (print-unreadable-object (object stream :type t :identity t)
-    (format stream "indent: ~a text: ~s blankp: ~a"
+    (format stream "indent: ~a quotes: ~a text: ~s blankp: ~a"
             (indent object)
+            (quotes object)
             (text object)
             (blankp object))))
 
 ;;; Utility
 
-(defun calc-indent (string)
+(defun indent-level (string)
   (loop for c across string
         while (char= c #\Space)
         count t))
 
+(defun quote-level (string)
+  (loop for char across string
+        while (member char '(#\Space #\>))
+        count (char= char #\>)))
+
 (defun strip (string)
-  (string-trim '(#\Tab #\Space #\Linefeed #\Return) string))
+  (string-left-trim '(#\Tab #\Space #\Linefeed #\Return #\>) string))
 
 (defun input->lines (input-stream)
   (loop for line = (read-line input-stream nil)
         while line
-        for indent = (calc-indent line)
+        for indent = (indent-level line)
+        for quotes = (quote-level line)
         for text = (strip line)
         for blankp = (string= "" text)
         collect (make-line :blankp blankp
+                           :quotes quotes
                            :text text
                            :indent indent)))
 
@@ -118,6 +130,7 @@
 
 (defun merge-head-line (line1 line2)
   (make-line :indent 0
+             :quotes 0
              :text (format nil "~:[#~;##~]~a~a"
                            (char= #\- (char (text line2) 0))
                            (make-string (indent line1)
@@ -140,17 +153,6 @@
 
 ;;; Join two lines if no blank lines in between
 
-(defun quote-level (line)
-  (loop for char across (text line)
-        while (member char '(#\Space #\>))
-        count (char= char #\>)))
-
-(defun same-quote-level-p (line1 line2)
-  (= (quote-level line1) (quote-level line2)))
-
-(defun strip-quote (string)
-  (string-left-trim '(#\Space #\>) string))
-
 (defun list-start-p (line)
   (or (member (char (text line) 0) '(#\* #\+ #\-))
       (ordered-list-p (text line))))
@@ -164,11 +166,12 @@
 (defun join-able-p (line1 line2)
   (and (not (blankp line1))
        (not (blankp line2))
-       (not (plusp (quote-level line1)))
+       (not (plusp (quotes line1)))
        (not (list-start-p line1))))
 
 (defun join (line1 line2)
   (make-line :indent (indent line1)
+             :quotes (quotes line1)
              :text (format nil "~a ~a" (text line1)
                            (strip-quote (text line2)))
              :blankp nil))
