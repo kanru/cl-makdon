@@ -151,10 +151,21 @@
 (defun strip-quote (string)
   (string-left-trim '(#\Space #\>) string))
 
+(defun list-start-p (line)
+  (or (member (char (text line) 0) '(#\* #\+ #\-))
+      (ordered-list-p (text line))))
+
+(defun ordered-list-p (string)
+  (let ((end (position #\. string)))
+    (every (lambda (char)
+             (member char '(#\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9 #\0)))
+           (subseq string 0 end))))
+
 (defun join-able-p (line1 line2)
   (and (not (blankp line1))
        (not (blankp line2))
-       (same-quote-level-p line1 line2)))
+       (same-quote-level-p line1 line2)
+       (not (list-start-p line1))))
 
 (defun join (line1 line2)
   (make-line :indent (indent line1)
