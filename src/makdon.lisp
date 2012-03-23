@@ -166,7 +166,7 @@
 (defun join-able-p (line1 line2)
   (and (not (blankp line1))
        (not (blankp line2))
-       (not (plusp (quotes line1)))
+       (= (quotes line1) (quotes line2))
        (not (list-start-p line1))))
 
 (defun join (line1 line2)
