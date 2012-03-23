@@ -32,6 +32,6 @@ Convert the source to a format that is easier to process.
 
     become
 
-        (line :text "> quote: line one line two" :indent 0)
+        (line :text "quote: line one line two" :indent 0 :quotes 1)
 
     This process should aware the i18n issues.
